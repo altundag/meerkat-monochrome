@@ -1,0 +1,228 @@
+(footprint "FM25L16B-DG"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(descr "DFN 8")
+	(tags "Integrated Circuit")
+	(property "Reference" "IC**"
+		(at 0 0 0)
+		(layer "F.SilkS")
+		(uuid "315fc2ce-5871-4a3e-b10c-faedafd0b617")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(property "Value" "SON95P400X450X80-9N"
+		(at 0 0 0)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "682e7757-c932-45a4-b7f5-d4e9df31a8b0")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d0d39578-4434-43ca-8080-8292202b7cc2")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "15c72bab-05fe-4732-90ae-6856f2e41952")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_circle
+		(center -2.375 -2.15)
+		(end -2.375 -2.025)
+		(stroke
+			(width 0.25)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "57a1f662-c2ee-436b-8164-ae28679cbe5e")
+	)
+	(fp_line
+		(start -2.625 -2.55)
+		(end 2.625 -2.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "6f594ba1-a981-4bd1-a833-5a8c81a8b384")
+	)
+	(fp_line
+		(start -2.625 2.55)
+		(end -2.625 -2.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "8e17b7f3-f3ad-4ca4-9244-9b428a09cf9c")
+	)
+	(fp_line
+		(start 2.625 -2.55)
+		(end 2.625 2.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "2701eb13-ade2-431d-9886-cfd874ead3ff")
+	)
+	(fp_line
+		(start 2.625 2.55)
+		(end -2.625 2.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "ad05c53f-2ea4-43be-b506-9da86f6ac896")
+	)
+	(fp_line
+		(start -2 -2.25)
+		(end 2 -2.25)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "73a0d575-1fcb-46f3-8c9a-f2b1a24d39fa")
+	)
+	(fp_line
+		(start -2 -1.25)
+		(end -1 -2.25)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "a51c0bee-78ec-4ddc-8df3-d76a13effb02")
+	)
+	(fp_line
+		(start -2 2.25)
+		(end -2 -2.25)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "d5ba1302-7abc-4d9a-9c42-ef9db09e1cff")
+	)
+	(fp_line
+		(start 2 -2.25)
+		(end 2 2.25)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "a90e9c6c-7657-4fb6-adb0-357a9bac5abb")
+	)
+	(fp_line
+		(start 2 2.25)
+		(end -2 2.25)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "3caec074-6223-4ee5-ad8d-5bc51e78be97")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "8e0f54a4-9269-40fe-9374-cea167a398ec")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.254)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at -2 -1.425 90)
+		(size 0.45 0.75)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "fffdaec2-c2f9-4977-a69b-174b54661d2f")
+	)
+	(pad "2" smd rect
+		(at -2 -0.475 90)
+		(size 0.45 0.75)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "3bd237be-b46c-4a9d-bcc0-87ff1382ff7e")
+	)
+	(pad "3" smd rect
+		(at -2 0.475 90)
+		(size 0.45 0.75)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "5d3179e1-5893-4f09-b338-38881d2a17ed")
+	)
+	(pad "4" smd rect
+		(at -2 1.425 90)
+		(size 0.45 0.75)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "0ae482f3-25d0-4b78-bb71-45318c01a17c")
+	)
+	(pad "5" smd rect
+		(at 2 1.425 90)
+		(size 0.45 0.75)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "1fa4417b-7c8c-4b1e-bdd0-fff688f09496")
+	)
+	(pad "6" smd rect
+		(at 2 0.475 90)
+		(size 0.45 0.75)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "e3540922-345a-45ae-9367-1165bc5c60ea")
+	)
+	(pad "7" smd rect
+		(at 2 -0.475 90)
+		(size 0.45 0.75)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "f3825eb4-2d5f-4a05-9f20-ecf2bc79b93c")
+	)
+	(pad "8" smd rect
+		(at 2 -1.425 90)
+		(size 0.45 0.75)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "02ef91ba-cc22-41b6-8500-924cefd49d6f")
+	)
+	(embedded_fonts no)
+	(model "FM25L16B-DG.stp"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

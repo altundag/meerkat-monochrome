@@ -1,0 +1,516 @@
+{
+    "description": {
+        "name": "MT9M001",
+        "address": "0x5D"
+    },
+    "registers": [
+        {
+            "address": "0x00",
+            "name": "Chip Version",
+            "default": "0x8431",
+            "documentation": [
+                "This register is read-only and gives the chip identification number: 0x8431 (1000 0100 0001 0001)."
+            ]
+        },
+        {
+            "address": "0x01",
+            "name": "Row Start",
+            "default": "0x000C",
+            "documentation": [
+                "First row to be read out-default = 0x000C (12). Data format: 0000 0ddd dddd dddd"
+            ]
+        },
+        {
+            "address": "0x02",
+            "name": "Column Start",
+            "default": "0x0014",
+            "documentation": [
+                "First column to be read out-default = 0x0014 (20).",
+                "Register value must be an even number. Data format: 0000 0ddd dddd dddd"
+            ]
+        },
+        {
+            "address": "0x03",
+            "name": "Row Size",
+            "default": "0x03FF",
+            "documentation": [
+                "Window height (number of rows - 1)-default = 0x03FF (1023).",
+                "Minimum value for 0x03 = 0x0002. Data format: 0000 0ddd dddd dddd"
+            ]
+        },
+        {
+            "address": "0x04",
+            "name": "Column Size",
+            "default": "0x04FF",
+            "documentation": [
+                "Window width (number of columns - 1)-default = 0x04FF (1279).",
+                "Register value must be an odd number.",
+                "Minimum value for 0x04 = 0x0003. Data format: 0000 0ddd dddd dddd"
+            ]
+        },
+        {
+            "address": "0x05",
+            "name": "Horizontal Blanking",
+            "default": "0x0009",
+            "documentation": [
+                "Horizontal Blanking-default = 0x0009 (9 pixels). Data format: 0000 0ddd dddd dddd"
+            ]
+        },
+        {
+            "address": "0x06",
+            "name": "Vertical Blanking",
+            "default": "0x0019",
+            "documentation": [
+                "Vertical Blanking-default = 0x0019 (25 rows). Data format: 0000 0ddd dddd dddd"
+            ]
+        },
+        {
+            "address": "0x07",
+            "name": "Output Control",
+            "default": "0x0002",
+            "documentation": [
+                "This register controls various features of the output format for the sensor. Data format: 0000 0000 0d00 00dd"
+            ],
+            "bits": [
+                {
+                    "bit_position": "0",
+                    "name": "Synchronize changes",
+                    "documentation": [
+                        "Synchronize changes (copied to Reg0xF1, bit1).",
+                        "0 = normal operation. Update changes to registers that affect image brightness (integration time,",
+                        "integration delay, gain, horizontal blanking and vertical blanking, window size, row/column skip or",
+                        "row mirror) at the next frame boundary. The \"frame boundary\" is 8 row_times before the rising",
+                        "edge of FRAME_VALID. (If \"Show Dark Rows\" is set, it will be coincident with the rising edge of",
+                        "FRAME_VALID.)",
+                        "1 = do not update any changes to these settings until this bit is returned to \"0.\""
+                    ]
+                },
+                {
+                    "bit_position": "1",
+                    "name": "Chip Enable",
+                    "documentation": [
+                        "Chip Enable (copied to Reg0xF1, bit0).",
+                        "1 = normal operation.",
+                        "0 = stop sensor readout. When this is returned to \"1\", sensor readout restarts at the starting row in",
+                        "a new frame. The digital power consumption can then also be reduced to less than 5uA by turning",
+                        "off the master clock."
+                    ]
+                },
+                {
+                    "bit_position": "6",
+                    "name": "Use Test Data",
+                    "documentation": [
+                        "Use Test Data.",
+                        "When set, a test pattern will be output instead of the sampled image from the sensor array. The",
+                        "value sent to the DOUT[9:0] pins will alternate between the Test Data register (Reg0x32) in even",
+                        "columns and the inverse of the Test Data register for odd columns. The output \"image\" will have",
+                        "the same width, height, and frame rate as it would otherwise have. No digital processing (gain or",
+                        "offset) is applied to the data. When clear (the default), sampled pixel values are output normally"
+                    ]
+                }
+            ]
+        },
+        {
+            "address": "0x09",
+            "name": "Shutter Width",
+            "default": "0x0419",
+            "documentation": [
+                "Number of rows of integration-default = 0x0419 (1049). Data format: 00dd dddd dddd dddd"
+            ]
+        },
+        {
+            "address": "0x0B",
+            "name": "Restart",
+            "default": "0x0000",
+            "documentation": [
+                "Setting bit 0 to \"1\" of Reg0x0B will cause the sensor to abandon the readout of the current frame",
+                "and restart from the first row. This register automatically resets itself to 0x0000 after the frame",
+                "restart. The first frame after this event is considered to be a \"bad frame\" (see description for",
+                "Reg0x20, bit0).",
+                "Data format: 0000 0000 0000 000d"
+            ]
+        },
+        {
+            "address": "0x0C",
+            "name": "Shutter Delay",
+            "default": "0x0000",
+            "documentation": [
+                "Shutter delay-default = 0x0000 (0). This is the number of master clocks times four that the timing",
+                "and control logic waits before asserting the reset for a given row. Data format: 0000 0ddd dddd dddd"
+            ]
+        },
+        {
+            "address": "0x0D",
+            "name": "Reset",
+            "default": "0x0000",
+            "documentation": [
+                "This register is used to reset the sensor to its default, power-up state. To put the MT9M001 in reset",
+                "mode first write a \"1\" into bit 0 of this register, then write a \"0\" into bit 0 to resume operation.",
+                "Data format: 0000 0000 0000 000d"
+            ]
+        },
+        {
+            "address": "0x1E",
+            "name": "Read Options 1",
+            "default": "0x8000",
+            "documentation": [
+                "In read mode 1, this register is used to control many aspects of the readout of the sensor. Data format: 1000 dddd 00dd dd00"
+            ],
+            "bits": [
+                {
+                    "bit_position": "2",
+                    "name": "Column Skip 4",
+                    "documentation": [
+                        "Column Skip 4-default is 0 (disable). 1 = enable."
+                    ]
+                },
+                {
+                    "bit_position": "3",
+                    "name": "Row Skip 4",
+                    "documentation": [
+                        "Row Skip 4-default is 0 (disable). 1 = enable."
+                    ]
+                },
+                {
+                    "bit_position": "4",
+                    "name": "Column Skip 8",
+                    "documentation": [
+                        "Column Skip 8-default is 0 (disable). 1 = enable."
+                    ]
+                },
+                {
+                    "bit_position": "5",
+                    "name": "Row Skip 8",
+                    "documentation": [
+                        "Row Skip 8-default is 0 (disable). 1 = enable."
+                    ]
+                },
+                {
+                    "bit_position": "8",
+                    "name": "Snapshot Mode",
+                    "documentation": [
+                        "Snapshot Mode-default is 0 (continuous mode).",
+                        "1 = enable (wait for TRIGGER; TRIGGER can come from outside signal (TRIGGER pin on the sensor)",
+                        "or from serial interface register restart, i.e. programming a \"1\" to bit 0 of Reg0x0B"
+                    ]
+                },
+                {
+                    "bit_position": "9",
+                    "name": "STROBE Enable",
+                    "documentation": [
+                        "STROBE Enable-default is 0 (no STROBE signal).",
+                        "1 = enable STROBE (signal output from the sensor during the time all rows are integrating. See",
+                        "STROBE width for more information)."
+                    ]
+                },
+                {
+                    "bit_position": "10",
+                    "name": "STROBE Width",
+                    "documentation": [
+                        "STROBE Width-default is 0 (STROBE signal width at minimum length, 1 row of integration time,",
+                        "prior to line valid going HIGH)",
+                        "1 = extend STROBE width (STROBE signal width extends to entire time all rows are integrating)."
+                    ]
+                },
+                {
+                    "bit_position": "11",
+                    "name": "Strobe Override",
+                    "documentation": [
+                        "Strobe Override-default is 0 (STROBE signal created by digital logic).",
+                        "1 = override STROBE signal (STROBE signal is set HIGH when this bit is set, LOW when this bit is set",
+                        "LOW. It is assumed that STROBE enable is set to \"0\" if STROBE override is being used)."
+                    ]
+                }
+            ]
+        },
+        {
+            "address": "0x20",
+            "name": "Read Options 2",
+            "default": "0x1104",
+            "documentation": [
+                "This register is used to control many aspects of the readout of the sensor. Data format: dd01 0dd1 d00d d10d"
+            ],
+            "bits": [
+                {
+                    "bit_position": "0",
+                    "name": "No bad frames",
+                    "documentation": [
+                        "No bad frames-1 = output all frames (including bad frames).",
+                        "0 (default) = only output good frames. A bad frame is defined as the first frame following a change",
+                        "to: window size or position, horizontal blanking, row or column skip, or mirroring."
+                    ]
+                },
+                {
+                    "bit_position": "3",
+                    "name": "Column skip",
+                    "documentation": [
+                        "Column skip-1= read out two columns, and then skip two columns (for example, col 0, col 1, col 4, col 5,...",
+                        "0 = normal readout (default)"
+                    ]
+                },
+                {
+                    "bit_position": "4",
+                    "name": "Row skip",
+                    "documentation": [
+                        "Row skip-1 = read out two rows, and then skip two rows (for example, row 0, row 1, row 4, row 5...).",
+                        "0 = normal readout (default)."
+                    ]
+                },
+                {
+                    "bit_position": "7",
+                    "name": "Flip Row",
+                    "documentation": [
+                        "Flip Row-1 = readout starting 1 row later (alternate color pair)",
+                        "0 (default) = normal readout."
+                    ]
+                },
+                {
+                    "bit_position": "9",
+                    "name": "Continuous LINE_VALID",
+                    "documentation": [
+                        "1 = \"Continuous\" LINE_VALID (continue producing LINE_VALID during vertical blanking)."
+                    ]
+                },
+                {
+                    "bit_position": "10",
+                    "name": "Continuous LINE_VALID XOR FRAME_VALID",
+                    "documentation": [
+                        "1 = LINE_VALID = \"Continuous\" LINE_VALID XOR FRAME_VALID.",
+                        "0 = LINE_VALID determined by bit 9."
+                    ]
+                },
+                {
+                    "bit_position": "11",
+                    "name": "raw data output mode",
+                    "documentation": [
+                        "the black rows can also be read out by setting the sensor to raw data output mode."
+                    ]
+                },
+                {
+                    "bit_position": "15",
+                    "name": "Mirror Row",
+                    "documentation": [
+                        "Mirror Row-1 = read out from bottom to top (upside down).",
+                        "0 (default) = normal readout (top to bottom)."
+                    ]
+                }
+            ]
+        },
+        {
+            "address": "0x2B",
+            "name": "Even Row, Even Column gain",
+            "default": "0x0008",
+            "documentation": [
+                "Even row, even column-default = 0x08 (8) = 1x gain.",
+                "Data format: 0000 0000 0ddd dddd"
+            ]
+        },
+        {
+            "address": "0x2C",
+            "name": "Odd Row, Even Column gain",
+            "default": "0x0008",
+            "documentation": [
+                "Odd row, even column-default = 0x08 (8) = 1x gain.",
+                "Data format: 0000 0000 0ddd dddd"
+            ]
+        },
+        {
+            "address": "0x2D",
+            "name": "Even Row, Odd Column gain",
+            "default": "0x0008",
+            "documentation": [
+                "Even row, odd column-default = 0x08 (8) = 1x gain.",
+                "Data format: 0000 0000 0ddd dddd"
+            ]
+        },
+        {
+            "address": "0x2E",
+            "name": "Odd Row, Odd Column gain",
+            "default": "0x0008",
+            "documentation": [
+                "Odd row, odd column-default = 0x08 (8) = 1x gain.",
+                "Data format: 0000 0000 0ddd dddd"
+            ]
+        },
+        {
+            "address": "0x32",
+            "name": "Test Data",
+            "documentation": [
+                "The value used to produce a test pattern in \"Use Test Data\" mode (Reg0x07 bit 6).",
+                "Data format: 0000 dddd dddd dd00"
+            ]
+        },
+        {
+            "address": "0x35",
+            "name": "Global Gain",
+            "default": "0x0008",
+            "documentation": [
+                "Global gain-default = 0x08 (8) = 1x gain. This register can be used to set all four gains at once.",
+                "Data format: 0000 0000 0ddd dddd"
+            ]
+        },
+        {
+            "address": "0x5F",
+            "name": "Cal Threshold",
+            "default": "0x0904",
+            "documentation": [
+                "Data format: dddd dddd d0dd dddd"
+            ],
+            "bits": [
+                {
+                    "bit_position": "5:0",
+                    "name": "Thres_lo",
+                    "documentation": [
+                        "Thres_lo-Lower threshold for black level in ADC LSBs-default = 000100."
+                    ]
+                },
+                {
+                    "bit_position": "7",
+                    "name": "override automatic Thres_hi and Thres_lo adjust",
+                    "documentation": [
+                        "1 = override automatic Thres_hi and Thres_lo adjust (Thres_hi always = bits 14:8; Thres_lo always = bits 5:0).",
+                        "Default = 0 = Automatic Thres_hi and Thres_lo adjustment."
+                    ]
+                },
+                {
+                    "bit_position": "14:8",
+                    "name": "Thres_hi",
+                    "documentation": [
+                        "Thres_hi-Maximum allowed black level in ADC LSBs (default = Thres_lo + 5)",
+                        "Black level maximum is set to this value when bit 7 = 1; black level maximum is reset to this value",
+                        "after every black level average restart if bit 15 = 1 and bit 7 = 0."
+                    ]
+                },
+                {
+                    "bit_position": "15",
+                    "name": "No gain dependence",
+                    "documentation": [
+                        "1 = Thres_lo is set by the programmed value of bits 5:0, Thres_hi is reset to the programmed value",
+                        "(bits 14:8) after every black level average restart.",
+                        "0 = Thres_lo and Thres_hi are set automatically, as described above."
+                    ]
+                }
+            ]
+        },
+        {
+            "address": "0x60",
+            "name": "Even Row, Even Column analog offset",
+            "default": "0x0000",
+            "documentation": [
+                "Even row, even column-analog offset correction value for even row, even column, bits 0:7 sets ",
+                "magnitude, bit 8 set sign.",
+                "0 = positive; 1 = negative.",
+                "two's complement, if bit 8 = 1, Offset = bits [0:7] - 256.",
+                "Data format: 0000 000d dddd dddd"
+            ]
+        },
+        {
+            "address": "0x61",
+            "name": "Odd Row, Odd Column analog offset",
+            "default": "0x0000",
+            "documentation": [
+                "Odd row, odd column-analog offset correction value for odd row, odd column, bits 0:7 sets",
+                "magnitude, bit 8 set sign.",
+                "0 = positive; 1 = negative.",
+                "two's complement, if bit 8 = 1, Offset = bits [0:7] - 256.",
+                "Data format: 0000 000d dddd dddd"
+            ]
+        },
+        {
+            "address": "0x62",
+            "name": "Cal Ctrl",
+            "default": "0x0498",
+            "documentation": [
+                "Data format: d00d d100 1001 1ddd"
+            ],
+            "bits": [
+                {
+                    "bit_position": "0",
+                    "name": "Manual override of black level correction",
+                    "documentation": [
+                        "Manual override of black level correction.",
+                        "1 = override automatic black level correction with programmed values.",
+                        "0 = normal operation (default)."
+                    ]
+                },
+                {
+                    "bit_position": "1",
+                    "name": "disable black level correction",
+                    "documentation": [
+                        "disable black level correction (Offset Correction Voltage = 0.0V)."
+                    ]
+                },
+                {
+                    "bit_position": "2",
+                    "name": "apply black level calibration continuously",
+                    "documentation": [
+                        "0 = apply black level calibration during ADC operation only (default).",
+                        "1 =  apply black level calibration continuously."
+                    ]
+                },
+                {
+                    "bit_position": "11",
+                    "name": "do not reset the upper threshold after a black level recalculation sweep",
+                    "documentation": [
+                        "1 = do not reset the upper threshold after a black level recalculation sweep.",
+                        "0 = reset the upper threshold after a black level recalculation sweep (default)."
+                    ]
+                },
+                {
+                    "bit_position": "12",
+                    "name": "start a new running digitally filtered average for the black level",
+                    "documentation": [
+                        "1 = start a new running digitally filtered average for the black level (this is internally reset to \"0\"",
+                        "immediately), and do a rapid sweep to find the new starting point.",
+                        "0 = normal operation (default)."
+                    ]
+                },
+                {
+                    "bit_position": "15",
+                    "name": " do not perform the rapid black level sweep on new gain settings",
+                    "documentation": [
+                        "1 = do not perform the rapid black level sweep on new gain settings.",
+                        "0 = normal operation."
+                    ]
+                }
+            ]
+        },
+        {
+            "address": "0x63",
+            "name": "Even Row, Odd Column analog offset",
+            "default": "0x0000",
+            "documentation": [
+                "Even row, odd column-analog offset correction value for even row, odd column, bits 0:7 sets",
+                "magnitude, bit 8 set sign.",
+                "0 = positive; 1 = negative.",
+                "two's complement, if bit 8 = 1, Offset = bits [0:7] - 256.",
+                "Data format: 0000 000d dddd dddd"
+            ]
+        },
+        {
+            "address": "0x64",
+            "name": "Odd Row, Even Column analog offset",
+            "default": "0x0000",
+            "documentation": [
+                "Odd row, even column-analog offset correction value for odd row, even column, bits 0:7 sets",
+                "magnitude, bit 8 set sign.",
+                "0 = positive; 1 = negative.",
+                "two's complement, if bit 8 = 1, Offset = bits [0:7] - 256.",
+                "Data format: 0000 000d dddd dddd"
+            ]
+        },
+        {
+            "address": "0xF1",
+            "name": "Chip Enable",
+            "default": "0x0001",
+            "documentation": [
+                "Mirrors the functionality of Reg0x07 bit1 (Chip Enable).",
+                "1 = normal operation.",
+                "0 = stop sensor readout; when this is returned to \"1\"",
+                "sensor readout restarts at the starting row in",
+                "a new frame.",
+                "Data format: 0000 0000 0000 00dd"
+            ]
+        }
+    ]
+}
