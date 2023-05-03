@@ -1,0 +1,12 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "ABM8-272-T3")(type "KiCad")(uri "${KIPRJMOD}/components/ABM8-272-T3.kicad_sym")(options "")(descr "Crystal"))
+  (lib (name "c-mount-03")(type "KiCad")(uri "${KIPRJMOD}/components/c-mount-03.kicad_sym")(options "")(descr ""))
+  (lib (name "MT9M001C12STM")(type "KiCad")(uri "${KIPRJMOD}/components/MT9M001C12STM.kicad_sym")(options "")(descr "Sensor"))
+  (lib (name "NC7SZ11P6X")(type "KiCad")(uri "${KIPRJMOD}/components/NC7SZ11P6X.kicad_sym")(options "")(descr "Logic Gates 3-Input AND Gate"))
+  (lib (name "FM25L16B-DG")(type "KiCad")(uri "${KIPRJMOD}/components/FM25L16B-DG.kicad_sym")(options "")(descr "F-RAM 16K Serial SPI 3V FRAM"))
+  (lib (name "NCP189CMTW330TAG")(type "KiCad")(uri "${KIPRJMOD}/components/NCP189CMTW330TAG.kicad_sym")(options "")(descr "LDO Voltage Regulators NCP189 AD SLEW RATE 3V3 WDFNW6 2X2"))
+  (lib (name "MEM2085-00-115-00-A")(type "KiCad")(uri "${KIPRJMOD}/components/MEM2085-00-115-00-A.kicad_sym")(options "")(descr ""))
+  (lib (name "LM66100DCKR")(type "KiCad")(uri "${KIPRJMOD}/components/LM66100DCKR.kicad_sym")(options "")(descr "LM66100 5.5-V, 1.5-A 79-mΩ, Low IQ Ideal Diode With Input Polarity Protection "))
+  (lib (name "RP2350-QFN-60")(type "KiCad")(uri "${KIPRJMOD}/components/RP2350-QFN-60.kicad_sym")(options "")(descr ""))
+)

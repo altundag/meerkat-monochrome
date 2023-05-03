@@ -1,0 +1,18 @@
+[package]
+name = "firmware"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cortex-m-rt = "0.7.5"
+cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
+rp235x-hal = "0.3.0"
+critical-section = "1.2.0"
+pio = "0.2.1"
+pio-proc = "0.2.1"
+
+embedded-hal = "1.0.0"
+embedded-hal-bus = "0.3.0"
+embedded-sdmmc = "0.9.0"
+
+mt9m001 = { path = "../mt9m001" }
