@@ -8,7 +8,8 @@ const ADDRESS: u8 = 0x5D;
 
 #[derive(Debug)]
 pub enum Error {
-    I2C,
+    I2CRead,
+    I2CWrite,
     Value,
 }
 
@@ -28,19 +29,25 @@ where
     }
 
     fn get_u16(&mut self, reg: u8) -> Result<u16, Error> {
-        self.i2c.write(ADDRESS, &[reg]).map_err(|_| Error::I2C)?;
+        self.i2c
+            .write(ADDRESS, &[reg])
+            .map_err(|_| Error::I2CWrite)?;
 
         let mut bytes = [0; 2];
-        self.i2c.read(ADDRESS, &mut bytes).map_err(|_| Error::I2C)?;
+        self.i2c
+            .read(ADDRESS, &mut bytes)
+            .map_err(|_| Error::I2CRead)?;
 
         Ok(u16::from_be_bytes(bytes))
     }
 
     fn set_u16(&mut self, reg: u8, value: u16) -> Result<(), Error> {
-        self.i2c.write(ADDRESS, &[reg]).map_err(|_| Error::I2C)?;
+        self.i2c
+            .write(ADDRESS, &[reg])
+            .map_err(|_| Error::I2CWrite)?;
         self.i2c
             .write(ADDRESS, &value.to_be_bytes())
-            .map_err(|_| Error::I2C)?;
+            .map_err(|_| Error::I2CWrite)?;
         Ok(())
     }
     /// Returns Chip version value (1000 0100 0001 0001)

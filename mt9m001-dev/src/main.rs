@@ -51,6 +51,7 @@ use heapless::String;
 fn main() -> ! {
     // Grab our singleton objects
     let mut pac = pac::Peripherals::take().unwrap();
+    let core = pac::CorePeripherals::take().unwrap();
 
     // Set up the watchdog driver - needed by the clock setup code
     let mut watchdog = hal::Watchdog::new(pac.WATCHDOG);
@@ -69,10 +70,10 @@ fn main() -> ! {
     )
     .ok()
     .unwrap();
-	
-	// Pico SDK version:
-	// clock_gpio_init(GP21, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_SYS, divider);
-	// Details: https://forums.raspberrypi.com/viewtopic.php?t=336927
+
+    // Pico SDK version:
+    // clock_gpio_init(GP21, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_SYS, divider);
+    // Details: https://forums.raspberrypi.com/viewtopic.php?t=336927
     clocks
         .gpio_output0_clock
         .configure_clock(&clocks.system_clock, 4.MHz())
@@ -108,6 +109,9 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
+    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+    delay.delay_ms(100);
+
     let mut _camera_clock = pins.gpio21.into_mode::<hal::gpio::FunctionClock>();
 
     // Configure two pins as being I2C, not GPIO
@@ -124,7 +128,15 @@ fn main() -> ! {
     );
 
     let mut camera = mt9m001::MT9M001::new(i2c);
-    let chip_version = camera.get_chip_version().unwrap();
+
+    let chip_version = match camera.get_chip_version() {
+        Ok(val) => val,
+        Err(err_code) => match err_code {
+            mt9m001::Error::Value => 0xFFFC,
+            mt9m001::Error::I2CRead => 0xFFFD,
+            mt9m001::Error::I2CWrite => 0xFFFF,
+        },
+    };
 
     loop {
         let mut text: String<64> = String::new();
