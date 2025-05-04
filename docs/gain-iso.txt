@@ -1,0 +1,19 @@
+To convert a sensor gain value into ISO, you will need to know the sensor's base ISO setting and the gain value for a specific exposure.
+
+The formula for converting gain to ISO is:
+
+ISO = (2^Gain) x Base ISO
+
+where "Gain" is the sensor gain value, and "Base ISO" is the camera's base ISO setting.
+
+For example, if a camera has a base ISO of 100 and a gain value of 1, the ISO setting for that exposure would be:
+
+ISO = (2^1) x 100 = 200
+
+If the gain value was 2, the ISO would be:
+
+ISO = (2^2) x 100 = 400
+
+And so on.
+
+Note that this conversion formula assumes that the sensor's sensitivity to light is linear across different gain values, which may not always be the case. Additionally, the camera's base ISO may not necessarily be the same as the manufacturer's stated ISO sensitivity for the camera, as different manufacturers may use different methods to measure ISO sensitivity. Therefore, it's always a good idea to test and calibrate your camera to determine its actual ISO sensitivity and how it relates to the gain values.
