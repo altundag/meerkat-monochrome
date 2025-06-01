@@ -19,8 +19,8 @@ use rp235x_hal::{
 const WIDTH: u16 = 1312;
 const HEIGHT: u16 = 1048;
 
-const U32_BUFFER_LENGTH: usize = 4;
-const NUMBER_OF_BUFFER_SWAPS: usize = (WIDTH as usize * HEIGHT as usize) / U32_BUFFER_LENGTH / 4;
+const BUFFER_LENGTH: usize = 4;
+const NUMBER_OF_BUFFER_SWAPS: usize = (WIDTH as usize * HEIGHT as usize) / BUFFER_LENGTH / 4;
 
 #[unsafe(link_section = ".start_block")]
 #[used]
@@ -67,6 +67,8 @@ fn main() -> ! {
         .configure_clock(&clocks.system_clock, 4.MHz())
         .unwrap();
     clocks.gpio_output0_clock.enable();
+    timer.delay_ms(50);
+
     let sensor_i2c_sda: hal::gpio::Pin<_, FunctionI2C, _> = pins.gpio14.reconfigure();
     let sensor_i2c_scl: hal::gpio::Pin<_, FunctionI2C, _> = pins.gpio15.reconfigure();
     let sensor_i2c = hal::I2C::i2c1(
@@ -85,6 +87,7 @@ fn main() -> ! {
     {
         sensor.set_reset(true).unwrap();
         sensor.set_reset(false).unwrap();
+        timer.delay_ms(50);
 
         sensor.set_column_start(0).unwrap();
         sensor.set_column_size(WIDTH).unwrap();
@@ -94,6 +97,10 @@ fn main() -> ! {
         sensor.set_vertical_blanking(0).unwrap();
 
         sensor.set_read_options_1(0b100000000).unwrap();
+
+        //sensor.set_global_gain(0x67).unwrap();
+        //sensor.set_shutter_width(0x600).unwrap();
+
         //sensor.set_output_control(false, true, true).unwrap();
     }
 
@@ -137,23 +144,20 @@ fn main() -> ! {
 
     let dma = p.DMA.split(&mut p.RESETS);
 
-    let rx_buf0 =
-        rp235x_hal::singleton!(: [u32; U32_BUFFER_LENGTH] = [0; U32_BUFFER_LENGTH]).unwrap();
-    let rx_buf1 =
-        rp235x_hal::singleton!(: [u32; U32_BUFFER_LENGTH] = [0; U32_BUFFER_LENGTH]).unwrap();
-    let rx_transfer = double_buffer::Config::new((dma.ch1, dma.ch2), rx, rx_buf0).start();
+    let rx_buf0 = rp235x_hal::singleton!(: [u32; BUFFER_LENGTH] = [0; BUFFER_LENGTH]).unwrap();
+    let rx_buf1 = rp235x_hal::singleton!(: [u32; BUFFER_LENGTH] = [0; BUFFER_LENGTH]).unwrap();
+    let rx_transfer = double_buffer::Config::new((dma.ch0, dma.ch1), rx, rx_buf0).start();
     let mut rx_transfer = rx_transfer.write_next(rx_buf1);
 
     // Trigger...
     sensor_trigger.set_high().unwrap();
-    timer.delay_ms(10);
+    timer.delay_ms(1);
     sensor_trigger.set_low().unwrap();
 
     for i in 0..NUMBER_OF_BUFFER_SWAPS {
         let (rx_buf, next_rx_transfer) = rx_transfer.wait();
-        for j in 0..U32_BUFFER_LENGTH {
-            psram_memory_base[i * U32_BUFFER_LENGTH + j] = rx_buf[j];
-        }
+        psram_memory_base[i * BUFFER_LENGTH..(i + 1) * BUFFER_LENGTH]
+            .copy_from_slice(&rx_buf[..BUFFER_LENGTH]);
         rx_transfer = next_rx_transfer.write_next(rx_buf);
     }
 
