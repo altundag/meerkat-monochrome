@@ -8,7 +8,7 @@ LIB = """// This file was automatically generated from {file}\n\n#![no_std]
 
 use embedded_hal::i2c::I2c;"""
 
-CONST = "pub const {name}: u8 = {address};"
+CONST = "const {name}: u8 = {address};"
 
 BIT_FIELD_STRUCT = """pub struct {name} {{
     value: u16,
@@ -25,22 +25,22 @@ impl {name} {{
 }}"""
 
 
-SENSOR_STRUCT = """pub struct {name}<RW>
+SENSOR_STRUCT = """pub struct {name}<I2C>
 where
-    RW: I2c,
+    I2C: I2c,
 {{
-    i2c: RW,
+    i2c: I2C,
 }}
 
-impl<RW> {name}<RW>
+impl<I2C> {name}<I2C>
 where
-    RW: I2c,
+    I2C: I2c,
 {{
-    pub const fn new(i2c: RW) -> Self {{
+    pub const fn new(i2c: I2C) -> Self {{
         Self {{ i2c }}
     }}
 
-    fn get_u16(&mut self, reg: u8) -> Result<u16, RW::Error> {{
+    fn get_u16(&mut self, reg: u8) -> Result<u16, I2C::Error> {{
         self.i2c.write(SENSOR_ADDRESS, &[reg])?;
         let mut bytes = [0; 2];
         self.i2c.read(SENSOR_ADDRESS, &mut bytes)?;
@@ -48,7 +48,7 @@ where
         Ok(u16::from_be_bytes(bytes))
     }}
 
-    fn set_u16(&mut self, reg: u8, value: u16) -> Result<(), RW::Error> {{
+    fn set_u16(&mut self, reg: u8, value: u16) -> Result<(), I2C::Error> {{
         let bytes = value.to_be_bytes();
         self.i2c.write(SENSOR_ADDRESS, &[reg, bytes[0], bytes[1]])?;
         Ok(())
@@ -58,34 +58,34 @@ where
 }}"""
 
 GETTER = """/// {documentation}
-pub fn {name}(&mut self) -> Result<u16, RW::Error> {{
+pub fn {name}(&mut self) -> Result<u16, I2C::Error> {{
     self.get_u16({address})
 }}"""
 
 SETTER = """/// {documentation}
-pub fn {name}(&mut self, value: u16) -> Result<(), RW::Error> {{
+pub fn {name}(&mut self, value: u16) -> Result<(), I2C::Error> {{
     self.set_u16({address}, value)
 }}"""
 
 BIT_FIELD_STRUCT_GETTER = """/// {documentation}
-pub fn {name}(&mut self) -> Result<{struct_name}, RW::Error> {{
+pub fn {name}(&mut self) -> Result<{struct_name}, I2C::Error> {{
     Ok({struct_name}::new(self.get_u16({address})?))
 }}"""
 
 BIT_FIELD_STRUCT_SETTER = """/// {documentation}
-pub fn {name}(&mut self, value: &{struct_name}) -> Result<(), RW::Error> {{
+pub fn {name}(&mut self, value: &{struct_name}) -> Result<(), I2C::Error> {{
     self.set_u16({address}, value.value)
 }}"""
 
 
 BIT_RANGE_GETTER = """/// {documentation}
 pub const fn {name}(&self) -> u16 {{
-    self.value >> {start} & (0xFFFF << ({end} - {start}))
+    self.value >> {start} & !(0xFFFFu16 << ({end} - {start}))
 }}"""
 
 BIT_RANGE_SETTER = """/// {documentation}
 pub const fn {name}(mut self, value: u16) -> Self {{
-    let mask = (!0u16 << {end}) | ((1 << {start}) - 1);
+    let mask = (!0u16 << {end}) | ((1u16 << {start}) - 1);
     self.value = (self.value & mask) | ((value << {start}) & !mask);
 
     self
@@ -99,7 +99,7 @@ pub const fn {name}(&self) -> bool {{
 
 BIT_SETTER = """/// {documentation}
 pub const fn {name}(mut self, value: bool) -> Self {{
-    self.value = (self.value & !(1 << {bit_position})) | ((value as u16) << {bit_position});
+    self.value = (self.value & !(1u16 << {bit_position})) | ((value as u16) << {bit_position});
     self
 }}"""
 
