@@ -1,199 +1,183 @@
 #![no_std]
 #![no_main]
 
-mod filesystem;
-mod psram;
+mod fram;
+mod sdmmc;
+mod sensor;
 
-use core::panic::PanicInfo;
-use embedded_hal::{delay::DelayNs, digital::OutputPin};
-use embedded_hal_bus::spi::ExclusiveDevice;
-use rp235x_hal::{
-    self as hal, Clock,
-    clocks::StoppableClock,
-    dma::{DMAExt, single_buffer},
-    fugit::RateExtU32,
-    gpio::{FunctionI2C, FunctionPio0, Pin},
-    pio::{PIOExt, PinDir},
+use embassy_executor::Spawner;
+use embassy_rp::{
+    bind_interrupts, clocks,
+    gpio::{Level, Output},
+    i2c, peripherals, pio, spi,
 };
+use embassy_time::Timer;
+use fixed::{FixedU32, traits::ToFixed, types::extra::U16};
 
-const HEIGHT: usize = 1048;
-const WIDTH: usize = 1312;
-// TODO: Explain why `+2`
-const U32_IMAGE_BUFFER_LENGTH: usize = ((WIDTH + 2) * HEIGHT).div_ceil(3);
+use mt9m001::MT9M001;
+use sensor::Sensor;
 
-#[unsafe(link_section = ".start_block")]
+// Program metadata for `picotool info`.
+// This isn't needed, but it's recomended to have these minimal entries.
+#[unsafe(link_section = ".bi_entries")]
 #[used]
-pub static IMAGE_DEF: hal::block::ImageDef = hal::block::ImageDef::secure_exe();
+pub static PICOTOOL_ENTRIES: [embassy_rp::binary_info::EntryAddr; 4] = [
+    embassy_rp::binary_info::rp_program_name!(c"Meerkat Monochrome Firmware"),
+    embassy_rp::binary_info::rp_program_description!(c"Meerkat Monochrome Firmware"),
+    embassy_rp::binary_info::rp_cargo_version!(),
+    embassy_rp::binary_info::rp_program_build_attribute!(),
+];
 
-#[hal::entry]
-fn main() -> ! {
-    let mut p = hal::pac::Peripherals::take().unwrap();
-    let mut watchdog = hal::Watchdog::new(p.WATCHDOG);
-    let mut clocks = hal::clocks::init_clocks_and_plls(
-        12_000_000u32,
-        p.XOSC,
-        p.CLOCKS,
-        p.PLL_SYS,
-        p.PLL_USB,
-        &mut p.RESETS,
-        &mut watchdog,
-    )
-    .unwrap();
-    let mut timer = hal::Timer::new_timer0(p.TIMER0, &mut p.RESETS, &clocks);
-    let sio = hal::Sio::new(p.SIO);
-    let pins = hal::gpio::Pins::new(p.IO_BANK0, p.PADS_BANK0, sio.gpio_bank0, &mut p.RESETS);
+bind_interrupts!(struct Irqs {
+    PIO0_IRQ_0 => pio::InterruptHandler<peripherals::PIO0>;
+});
 
-    let mut status_led = pins.gpio20.into_push_pull_output();
+#[embassy_executor::main]
+async fn main(_spawner: Spawner) {
+    let mut p = embassy_rp::init(Default::default());
 
-    // PSRAM setup
-    // tPU >= 150µs...
-    timer.delay_us(300);
-    let _cs = pins.gpio0.into_function::<hal::gpio::FunctionXipCs1>();
-    let (_, kgd, _) = psram::read_id(&p.QMI);
-    if kgd != 0x5D {
-        panic!();
-    }
-    psram::init(&p.QMI, &mut timer, clocks.system_clock.freq().to_Hz());
-    p.XIP_CTRL.ctrl().modify(|_, w| w.writable_m1().set_bit());
-    let psram_u32_slice = unsafe {
-        core::slice::from_raw_parts_mut(psram::BASE_ADDRESS as *mut u32, (1024 * 1024 * 8) / 4)
+    let mut status_led = Output::new(p.PIN_20, Level::Low);
+
+    // PSRAM
+    let mut psram_config = embassy_rp::psram::Config::aps6404l();
+    psram_config.clock_hz = clocks::clk_sys_freq();
+    let psram = embassy_rp::psram::Psram::new(
+        embassy_rp::qmi_cs1::QmiCs1::new(p.QMI_CS1, p.PIN_0),
+        psram_config,
+    );
+    let psram = if let Ok(psram) = psram {
+        psram
+    } else {
+        blink(&mut status_led, 3).await;
+        panic!("cannot initialize psram");
+    };
+    let psram_slice = unsafe {
+        core::slice::from_raw_parts_mut(psram.base_address() as *mut u32, psram.size() / 4)
     };
 
-    // Sensor setup
-    let mut sensor_standby = pins.gpio4.into_push_pull_output();
-    let mut sensor_trigger = pins.gpio1.into_push_pull_output();
-
-    let _sensor_system_clk = pins.gpio21.into_function::<hal::gpio::FunctionClock>();
-    clocks
-        .gpio_output0_clock
-        .configure_clock(&clocks.system_clock, 6.MHz())
-        .unwrap();
-    clocks.gpio_output0_clock.enable();
-
-    sensor_standby.set_low().unwrap();
-    timer.delay_ms(10);
-
-    let sensor_i2c_sda: hal::gpio::Pin<_, FunctionI2C, _> = pins.gpio2.reconfigure();
-    let sensor_i2c_scl: hal::gpio::Pin<_, FunctionI2C, _> = pins.gpio3.reconfigure();
-    let sensor_i2c = hal::I2C::i2c1(
-        p.I2C1,
-        sensor_i2c_sda,
-        sensor_i2c_scl,
-        100.kHz(),
-        &mut p.RESETS,
-        &clocks.system_clock,
+    // FRAM
+    let mut fram = fram::FM25L16B::new(
+        Output::new(p.PIN_17, Level::High),
+        spi::Spi::new_blocking(p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, spi::Config::default()),
     );
-    let mut sensor = mt9m001::MT9M001::new(sensor_i2c);
-    if sensor.get_chip_version().unwrap() != 0x8431 {
-        panic!();
-    }
 
-    // Configure sensor...
-    {
-        sensor.set_reset(1).unwrap();
-        sensor.set_reset(0).unwrap();
-
-        sensor.set_column_start(0).unwrap();
-        sensor.set_column_size(WIDTH as u16).unwrap();
-        sensor.set_row_start(0).unwrap();
-        sensor.set_row_size(HEIGHT as u16).unwrap();
-        sensor.set_horizontal_blanking(0).unwrap();
-        sensor.set_vertical_blanking(0).unwrap();
-
-        let read_options_1 = mt9m001::ReadOptions1::DEFAULT.set_snapshot_mode(true);
-        sensor.set_read_options_1(&read_options_1).unwrap();
-
-        timer.delay_ms(250);
-    }
-
-    let pio_capture = pio_proc::pio_file!(
+    // Sensor PIO
+    let pio::Pio {
+        mut common,
+        sm0: mut sensor_pio_sm,
+        ..
+    } = pio::Pio::new(p.PIO0, Irqs);
+    let sensor_pio_program = pio::program::pio_file!(
         "src/main.pio",
         select_program("capture"),
         options(max_program_size = 32)
     );
-    let (mut pio, sm0, _, _, _) = p.PIO0.split(&mut p.RESETS);
-    let installed_program = pio.install(&pio_capture.program).unwrap();
-    let sensor_d0: Pin<_, FunctionPio0, _> = pins.gpio6.into_function();
-    let sensor_d1: Pin<_, FunctionPio0, _> = pins.gpio7.into_function();
-    let sensor_d2: Pin<_, FunctionPio0, _> = pins.gpio8.into_function();
-    let sensor_d3: Pin<_, FunctionPio0, _> = pins.gpio9.into_function();
-    let sensor_d4: Pin<_, FunctionPio0, _> = pins.gpio10.into_function();
-    let sensor_d5: Pin<_, FunctionPio0, _> = pins.gpio11.into_function();
-    let sensor_d6: Pin<_, FunctionPio0, _> = pins.gpio12.into_function();
-    let sensor_d7: Pin<_, FunctionPio0, _> = pins.gpio13.into_function();
-    let sensor_d8: Pin<_, FunctionPio0, _> = pins.gpio14.into_function();
-    let sensor_d9: Pin<_, FunctionPio0, _> = pins.gpio15.into_function();
-    let sensor_pixel_valid: Pin<_, FunctionPio0, _> = pins.gpio5.into_function();
-    let (mut sm, rx, _) = hal::pio::PIOBuilder::from_installed_program(installed_program)
-        .in_pin_base(sensor_d0.id().num)
-        .in_count(10)
-        .clock_divisor_fixed_point(1, 0)
-        .buffers(rp235x_hal::pio::Buffers::OnlyRx)
-        .push_threshold(64)
-        .autopush(true)
-        .build(sm0);
-    sm.set_pindirs([
-        (sensor_d0.id().num, PinDir::Input),
-        (sensor_d1.id().num, PinDir::Input),
-        (sensor_d2.id().num, PinDir::Input),
-        (sensor_d3.id().num, PinDir::Input),
-        (sensor_d4.id().num, PinDir::Input),
-        (sensor_d5.id().num, PinDir::Input),
-        (sensor_d6.id().num, PinDir::Input),
-        (sensor_d7.id().num, PinDir::Input),
-        (sensor_d8.id().num, PinDir::Input),
-        (sensor_d9.id().num, PinDir::Input),
-        (sensor_pixel_valid.id().num, PinDir::Input),
-    ]);
+    let sensor_pio_pins = [
+        &common.make_pio_pin(p.PIN_5),
+        &common.make_pio_pin(p.PIN_6),
+        &common.make_pio_pin(p.PIN_7),
+        &common.make_pio_pin(p.PIN_8),
+        &common.make_pio_pin(p.PIN_9),
+        &common.make_pio_pin(p.PIN_10),
+        &common.make_pio_pin(p.PIN_11),
+        &common.make_pio_pin(p.PIN_12),
+        &common.make_pio_pin(p.PIN_13),
+        &common.make_pio_pin(p.PIN_14),
+        &common.make_pio_pin(p.PIN_15),
+    ];
+    let mut sensor_pio_cfg = pio::Config::default();
+    sensor_pio_cfg.set_in_pins(&sensor_pio_pins[1..]);
+    sensor_pio_cfg.fifo_join = pio::FifoJoin::RxOnly;
+    sensor_pio_cfg.clock_divider = 1.to_fixed();
+    sensor_pio_cfg.use_program(&common.load_program(&sensor_pio_program.program), &[]);
+    sensor_pio_cfg.shift_in.threshold = 32;
+    sensor_pio_cfg.shift_in.auto_fill = true;
+    sensor_pio_cfg.shift_in.direction = pio::ShiftDirection::Right;
+    sensor_pio_sm.set_config(&sensor_pio_cfg);
+    sensor_pio_sm.set_pin_dirs(pio::Direction::In, &sensor_pio_pins);
 
-    let dma = p.DMA.split(&mut p.RESETS);
-    let (image_buffers, _) = psram_u32_slice.as_chunks_mut::<U32_IMAGE_BUFFER_LENGTH>();
-    let rx_transfer = single_buffer::Config::new(dma.ch1, rx, &mut image_buffers[0]).start();
-
-    sm.start();
-
-    status_led.set_high().unwrap();
-
-    // Trigger...
-    sensor_trigger.set_high().unwrap();
-    timer.delay_ms(10);
-    sensor_trigger.set_low().unwrap();
-
-    let (_, _, rx_buf) = rx_transfer.wait();
-
-    status_led.set_low().unwrap();
-
-    {
-        // SDMMC and file system setup
-        let sdmmc_spi_rx = pins.gpio24.into_function::<hal::gpio::FunctionSpi>();
-        let sdmmc_spi_cp = pins.gpio25.into_push_pull_output();
-        let sdmmc_spi_sclk = pins.gpio26.into_function::<hal::gpio::FunctionSpi>();
-        let sdmmc_spi_tx = pins.gpio27.into_function::<hal::gpio::FunctionSpi>();
-        let sdmmc_spi_bus =
-            hal::spi::Spi::<_, _, _, 8>::new(p.SPI1, (sdmmc_spi_tx, sdmmc_spi_rx, sdmmc_spi_sclk));
-        let sdmmc_spi_bus = sdmmc_spi_bus.init(
-            &mut p.RESETS,
-            clocks.peripheral_clock.freq(),
-            24.MHz(),
-            embedded_hal::spi::MODE_0,
-        );
-        let device = ExclusiveDevice::new_no_delay(sdmmc_spi_bus, sdmmc_spi_cp).unwrap();
-        let mut card = filesystem::FileSystem::new(device, &mut timer);
-        let (_, frame, _) = unsafe { rx_buf.align_to::<u8>() };
-        card.write_new_image(frame);
-        drop(card);
+    // Sensor
+    let sensor_clock = clocks::Gpout::new(p.PIN_21);
+    sensor_clock.set_src(clocks::GpoutSrc::Sys);
+    let sensor_clock_divider =
+        FixedU32::<U16>::from_num(clocks::clk_sys_freq() as f32 / Sensor::FREQUENCY as f32);
+    sensor_clock.set_div(
+        sensor_clock_divider.int().to_num(),
+        sensor_clock_divider.frac().to_bits() as u16,
+    );
+    let mut sensor = Sensor::new(
+        sensor_clock,
+        i2c::I2c::new_blocking(p.I2C1, p.PIN_3, p.PIN_2, i2c::Config::default()),
+        Output::new(p.PIN_4, Level::High),
+        Output::new(p.PIN_1, Level::High),
+    );
+    if Ok(true) != sensor.is_known_sensor() {
+        blink(&mut status_led, 5).await;
+        panic!("unknwon sensor");
+    }
+    if sensor.init().is_err() {
+        blink(&mut status_led, 6).await;
+        panic!("cannot initialize sensor");
     }
 
-    loop {
-        status_led.set_high().unwrap();
-        timer.delay_ms(300);
-        status_led.set_low().unwrap();
-        timer.delay_ms(300);
+    // SD Card
+    let spi = spi::Spi::new_blocking(p.SPI1, p.PIN_26, p.PIN_27, p.PIN_24, spi::Config::default());
+    let cs = Output::new(p.PIN_25, Level::Low);
+    let mut sd_card = sdmmc::Sdmmc::new(spi, cs);
+
+    for denominator in [1, 2, 4, 5, 10, 20, 30, 60, 120, 200, 500, 1000] {
+        let image_counter = if let Ok(v) = fram.read(0).and_then(|v: u64| {
+            fram.write(0, v.wrapping_add(1))?;
+            Ok(v)
+        }) {
+            v
+        } else {
+            blink(&mut status_led, 4).await;
+            panic!("cannot read or incrament image counter");
+        };
+        let image_counter = (image_counter % u16::MAX as u64) as u16;
+
+        let image = &mut psram_slice
+            [..((Sensor::WIDTH as usize + 2) * Sensor::HEIGHT as usize).div_ceil(3)];
+
+        sensor.set_gain(1f32);
+        sensor.set_shutter_speed(1, denominator);
+
+        status_led.set_high();
+        // Capture
+        let is_capture_failed = sensor
+            .capture(&mut sensor_pio_sm, p.DMA_CH1.reborrow(), image)
+            .await
+            .is_err();
+        if is_capture_failed {
+            blink(&mut status_led, 8).await;
+            panic!("cannot capture frame");
+        }
+        status_led.set_low();
+
+        let (_, image, _) = unsafe { image.align_to::<u8>() };
+        if sd_card.write_image(image_counter, image).is_err() {
+            blink(&mut status_led, 9).await;
+            panic!("cannot write image data");
+        }
+    }
+
+    status_led.set_high();
+
+    loop {}
+}
+
+async fn blink<'a>(led: &mut Output<'a>, n: u8) {
+    for _ in 0..n {
+        led.set_high();
+        Timer::after_millis(400).await;
+        led.set_low();
+        Timer::after_millis(400).await;
     }
 }
 
 #[inline(never)]
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }

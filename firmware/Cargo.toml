@@ -4,15 +4,25 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-cortex-m-rt = "0.7.5"
-cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
-rp235x-hal = "0.3.0"
-critical-section = "1.2.0"
-pio = "0.2.1"
-pio-proc = "0.2.1"
+embassy-embedded-hal = { version = "0.5.0" }
+embassy-executor = { version = "0.9.0", features = [
+    "arch-cortex-m",
+    "executor-thread",
+] }
+embassy-time = { version = "0.5.0", features = ["defmt-timestamp-uptime"] }
+embassy-rp = { version = "0.9.0", features = [
+    "time-driver",
+    "critical-section-impl",
+    "rp235xa",
+    "binary-info",
+    "run-from-ram",
+] }
 
-embedded-hal = "1.0.0"
-embedded-hal-bus = "0.3.0"
+embedded-hal-bus = { version = "0.1" }
 embedded-sdmmc = "0.9.0"
+cortex-m-rt = "0.7.0"
+panic-probe = { version = "1.0.0", features = ["print-defmt"] }
+fixed = "1.29.0"
+
 
 mt9m001 = { path = "../mt9m001" }

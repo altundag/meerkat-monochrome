@@ -120,7 +120,7 @@
         },
         {
             "address": "0x0B",
-            "name": "Restart",
+            "name": "Frame Restart",
             "default": "0x0000",
             "documentation": [
                 "Setting bit 0 to \"1\" of Reg0x0B will cause the sensor to abandon the readout of the current frame",
