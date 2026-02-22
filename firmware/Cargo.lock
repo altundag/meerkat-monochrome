@@ -290,10 +290,9 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "embassy-embedded-hal"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "554e3e840696f54b4c9afcf28a0f24da431c927f4151040020416e7393d6d0d8"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
 dependencies = [
- "embassy-futures",
+ "embassy-futures 0.1.2 (git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units)",
  "embassy-hal-internal",
  "embassy-sync",
  "embedded-hal 0.2.7",
@@ -314,7 +313,7 @@ dependencies = [
  "critical-section",
  "document-features",
  "embassy-executor-macros",
- "embassy-executor-timer-queue",
+ "embassy-executor-timer-queue 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -336,16 +335,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fc328bf943af66b80b98755db9106bf7e7471b0cf47dc8559cd9a6be504cc9c"
 
 [[package]]
+name = "embassy-executor-timer-queue"
+version = "0.1.0"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
+
+[[package]]
 name = "embassy-futures"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc2d050bdc5c21e0862a89256ed8029ae6c290a93aecefc73084b3002cdebb01"
 
 [[package]]
+name = "embassy-futures"
+version = "0.1.2"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
+
+[[package]]
 name = "embassy-hal-internal"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95285007a91b619dc9f26ea8f55452aa6c60f7115a4edc05085cd2bd3127cd7a"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
 dependencies = [
  "cortex-m",
  "critical-section",
@@ -355,8 +363,7 @@ dependencies = [
 [[package]]
 name = "embassy-rp"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af8d5ac11a8bc209d359ad98bb10a10f786471dd474790f3a4f991c77ae94f6f"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
 dependencies = [
  "cfg-if",
  "cortex-m",
@@ -364,7 +371,7 @@ dependencies = [
  "critical-section",
  "document-features",
  "embassy-embedded-hal",
- "embassy-futures",
+ "embassy-futures 0.1.2 (git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units)",
  "embassy-hal-internal",
  "embassy-sync",
  "embassy-time",
@@ -394,8 +401,7 @@ dependencies = [
 [[package]]
 name = "embassy-sync"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73974a3edbd0bd286759b3d483540f0ebef705919a5f56f4fc7709066f71689b"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
 dependencies = [
  "cfg-if",
  "critical-section",
@@ -408,8 +414,7 @@ dependencies = [
 [[package]]
 name = "embassy-time"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4fa65b9284d974dad7a23bb72835c4ec85c0b540d86af7fc4098c88cff51d65"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
 dependencies = [
  "cfg-if",
  "critical-section",
@@ -425,8 +430,7 @@ dependencies = [
 [[package]]
 name = "embassy-time-driver"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0a244c7dc22c8d0289379c8d8830cae06bb93d8f990194d0de5efb3b5ae7ba6"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
 dependencies = [
  "document-features",
 ]
@@ -434,18 +438,16 @@ dependencies = [
 [[package]]
 name = "embassy-time-queue-utils"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80e2ee86063bd028a420a5fb5898c18c87a8898026da1d4c852af2c443d0a454"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
 dependencies = [
- "embassy-executor-timer-queue",
+ "embassy-executor-timer-queue 0.1.0 (git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units)",
  "heapless",
 ]
 
 [[package]]
 name = "embassy-usb-driver"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17119855ccc2d1f7470a39756b12068454ae27a3eabb037d940b5c03d9c77b7a"
+source = "git+https://github.com/altundag/embassy.git?branch=fix-psram-max-select-units#96483e75b3f4908303a0bdee034961fd52e81d99"
 dependencies = [
  "embedded-io-async",
 ]
@@ -560,6 +562,7 @@ dependencies = [
  "cortex-m-rt",
  "embassy-embedded-hal",
  "embassy-executor",
+ "embassy-futures 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "embassy-rp",
  "embassy-time",
  "embedded-hal-bus",

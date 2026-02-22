@@ -14,7 +14,6 @@ use embassy_rp::{
 use embassy_time::Timer;
 use fixed::{FixedU32, traits::ToFixed, types::extra::U16};
 
-use mt9m001::MT9M001;
 use sensor::Sensor;
 
 // Program metadata for `picotool info`.
@@ -125,7 +124,7 @@ async fn main(_spawner: Spawner) {
     let cs = Output::new(p.PIN_25, Level::Low);
     let mut sd_card = sdmmc::Sdmmc::new(spi, cs);
 
-    for denominator in [1, 2, 4, 5, 10, 20, 30, 60, 120, 200, 500, 1000] {
+    for denominator in [12] {
         let image_counter = if let Ok(v) = fram.read(0).and_then(|v: u64| {
             fram.write(0, v.wrapping_add(1))?;
             Ok(v)
@@ -137,16 +136,25 @@ async fn main(_spawner: Spawner) {
         };
         let image_counter = (image_counter % u16::MAX as u64) as u16;
 
+        // Enable the transfer state machine
+        sensor_pio_sm.clear_fifos();
+        sensor_pio_sm.restart();
+        sensor_pio_sm.set_enable(true);
+
         let image = &mut psram_slice
             [..((Sensor::WIDTH as usize + 2) * Sensor::HEIGHT as usize).div_ceil(3)];
 
-        sensor.set_gain(1f32);
-        sensor.set_shutter_speed(1, denominator);
-
+        //// Capture
         status_led.set_high();
-        // Capture
         let is_capture_failed = sensor
-            .capture(&mut sensor_pio_sm, p.DMA_CH1.reborrow(), image)
+            .configure_and_capture(1f32, (1, denominator), {
+                let sensor_pio_sm_rx = sensor_pio_sm.rx();
+                async || {
+                    sensor_pio_sm_rx
+                        .dma_pull(p.DMA_CH0.reborrow(), image, false)
+                        .await;
+                }
+            })
             .await
             .is_err();
         if is_capture_failed {
@@ -154,6 +162,9 @@ async fn main(_spawner: Spawner) {
             panic!("cannot capture frame");
         }
         status_led.set_low();
+
+        // Disable the transfer statemachine
+        sensor_pio_sm.set_enable(false);
 
         let (_, image, _) = unsafe { image.align_to::<u8>() };
         if sd_card.write_image(image_counter, image).is_err() {

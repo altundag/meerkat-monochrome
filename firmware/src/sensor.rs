@@ -1,4 +1,4 @@
-use embassy_rp::{clocks::Gpout, gpio::Output, i2c, peripherals, pio};
+use embassy_rp::{clocks::Gpout, gpio::Output, i2c, peripherals};
 use embassy_time::{Duration, block_for};
 
 use mt9m001::MT9M001;
@@ -11,8 +11,6 @@ pub struct Sensor<'a> {
     mt9m001: MT9M001<I2C<'a>>,
     standby: Output<'a>,
     trigger: Output<'a>,
-    shutter: (u32, u32),
-    gain: f32,
 }
 
 impl<'a> Sensor<'a> {
@@ -31,8 +29,6 @@ impl<'a> Sensor<'a> {
             mt9m001: MT9M001::new(i2c),
             standby,
             trigger,
-            shutter: (1, 10),
-            gain: 1f32,
         }
     }
 
@@ -89,79 +85,43 @@ impl<'a> Sensor<'a> {
         Ok(())
     }
 
-    pub fn set_shutter_speed(&mut self, numerator: u32, denominator: u32) {
-        self.shutter = (numerator, denominator)
-    }
-
-    pub fn set_gain(&mut self, gain: f32) {
-        self.gain = gain;
-    }
-
-    pub async fn capture(
+    pub async fn configure_and_capture<T: AsyncFnMut() -> ()>(
         &mut self,
-        sm: &mut pio::StateMachine<'_, peripherals::PIO0, 0>,
-        dma: embassy_rp::Peri<'_, peripherals::DMA_CH1>,
-        image: &mut [u32],
+        gain: f32,
+        shutter: (u32, u32),
+        mut transfer_fn: T,
     ) -> Result<(), i2c::Error> {
         self.wake()?;
 
-        sm.set_enable(true);
-        sm.clear_fifos();
-        sm.restart();
-
         // Set gain
-        let gain = if self.gain <= 4f32 {
-            0x0008 + ((self.gain - 1f32) / 0.125f32) as u16
-        } else if self.gain <= 8f32 {
-            0x0051 + ((self.gain - 4f32) / 0.25f32) as u16
+        let gain = if gain <= 4f32 {
+            0x0008 + ((gain - 1f32) / 0.125f32) as u16
+        } else if gain <= 8f32 {
+            0x0051 + ((gain - 4f32) / 0.25f32) as u16
         } else {
-            0x0061 + ((self.gain - 9f32) / 1.0) as u16
+            0x0061 + ((gain - 9f32) / 1.0) as u16
         };
         self.mt9m001.set_global_gain(gain)?;
-
-        // Correction...
-        self.mt9m001.set_even_row_odd_column_analog_offset(2)?;
 
         // Set shutter speed
         let shutter_delay = self.mt9m001.get_shutter_delay()?;
         let col_size = self.mt9m001.get_column_size()?;
         let horizontal_blanking = self.mt9m001.get_horizontal_blanking()?;
-        let (numerator, denominator) = self.shutter;
+        let (numerator, denominator) = shutter;
         let integration_time_in_clock_periods = (numerator * Self::FREQUENCY) / denominator;
         let shutter_width = (integration_time_in_clock_periods + 180 + 4 * shutter_delay as u32)
             / (col_size as u32 + horizontal_blanking as u32 + 226);
         self.mt9m001.set_shutter_width(shutter_width as u16)?;
 
-        let rx = sm.rx();
-        let transfer = rx.dma_pull(dma, image, false);
+        // Trigger...
         self.trigger.set_high();
         self.trigger.set_low();
-        transfer.await;
 
-        sm.set_enable(false);
+        // Capture here...
+        transfer_fn().await;
 
         self.sleep()?;
 
         Ok(())
-    }
-
-    pub fn width(&mut self) -> Result<u16, i2c::Error> {
-        self.wake()?;
-
-        let result = self.mt9m001.get_column_size()?;
-
-        self.sleep()?;
-
-        Ok(result)
-    }
-
-    pub fn height(&mut self) -> Result<u16, i2c::Error> {
-        self.wake()?;
-
-        let result = self.mt9m001.get_row_size()?;
-
-        self.sleep()?;
-
-        Ok(result)
     }
 }
