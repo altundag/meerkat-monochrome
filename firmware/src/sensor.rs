@@ -1,96 +1,122 @@
-use embassy_rp::{clocks::Gpout, gpio::Output, i2c, peripherals};
-use embassy_time::{Duration, block_for};
+use embedded_hal::{delay::DelayNs, digital::OutputPin, i2c::I2c};
+use rp235x_hal::{
+    Timer,
+    clocks::{GpioOutput0Clock, StoppableClock},
+    timer::CopyableTimer0,
+};
 
 use mt9m001::MT9M001;
 
-type ClockSource<'a> = Gpout<'a, peripherals::PIN_21>;
-type I2C<'a> = i2c::I2c<'a, peripherals::I2C1, i2c::Blocking>;
+pub const HEIGHT: u16 = 1048;
+pub const WIDTH: u16 = 1312;
+pub const FREQUENCY: u32 = 6_000_000;
 
-pub struct Sensor<'a> {
-    clock_source: ClockSource<'a>,
-    mt9m001: MT9M001<I2C<'a>>,
-    standby: Output<'a>,
-    trigger: Output<'a>,
+pub struct Sensor<I2C: I2c, SP: OutputPin, TP: OutputPin> {
+    sensor_clock: GpioOutput0Clock,
+    timer: Timer<CopyableTimer0>,
+    standby: SP,
+    trigger: TP,
+    mt9m001: MT9M001<I2C>,
 }
 
-impl<'a> Sensor<'a> {
-    pub const HEIGHT: u16 = 1048;
-    pub const WIDTH: u16 = 1312;
-    pub const FREQUENCY: u32 = 5_800_000;
-
+impl<I2C, SP, TP> Sensor<I2C, SP, TP>
+where
+    I2C: I2c,
+    SP: OutputPin,
+    TP: OutputPin,
+{
     pub fn new(
-        clock_source: ClockSource<'a>,
-        i2c: I2C<'a>,
-        standby: Output<'a>,
-        trigger: Output<'a>,
+        sensor_clock: GpioOutput0Clock,
+        timer: Timer<CopyableTimer0>,
+        i2c: I2C,
+        standby: SP,
+        trigger: TP,
     ) -> Self {
         Self {
-            clock_source,
-            mt9m001: MT9M001::new(i2c),
+            sensor_clock,
+            timer,
             standby,
             trigger,
+            mt9m001: MT9M001::new(i2c),
         }
     }
 
-    fn wake(&mut self) -> Result<(), i2c::Error> {
-        self.clock_source.enable();
-        self.standby.set_low();
+    fn wake(&mut self) -> Result<(), SensorError> {
+        self.sensor_clock.enable();
+        self.standby
+            .set_low()
+            .map_err(|_| SensorError::StandbyError)?;
         let output_control = mt9m001::OutputControl::DEFAULT.set_chip_enable(true);
-        self.mt9m001.set_output_control(&output_control)?;
-        block_for(Duration::from_millis(1));
+        self.mt9m001
+            .set_output_control(&output_control)
+            .map_err(|_| SensorError::Spi)?;
+        self.timer.delay_ms(1);
         Ok(())
     }
 
-    fn sleep(&mut self) -> Result<(), i2c::Error> {
+    fn sleep(&mut self) -> Result<(), SensorError> {
         let output_control = mt9m001::OutputControl::DEFAULT.set_chip_enable(false);
-        self.mt9m001.set_output_control(&output_control)?;
-        block_for(Duration::from_millis(1));
-        self.standby.set_high();
-        self.clock_source.disable();
+        self.mt9m001
+            .set_output_control(&output_control)
+            .map_err(|_| SensorError::Spi)?;
+        self.timer.delay_ms(1);
+        self.standby
+            .set_high()
+            .map_err(|_| SensorError::StandbyError)?;
+        self.sensor_clock.disable();
         Ok(())
     }
 
-    pub fn is_known_sensor(&mut self) -> Result<bool, i2c::Error> {
-        self.wake()?;
-        let result = self.mt9m001.get_chip_version()?;
-        self.sleep()?;
-        Ok(0x8431 == result)
-    }
-
-    pub fn init(&mut self) -> Result<(), i2c::Error> {
+    pub fn init(&mut self) -> Result<(), SensorError> {
         self.wake()?;
 
-        self.mt9m001.set_reset(1)?;
-        self.mt9m001.set_reset(0)?;
+        self.mt9m001.set_reset(1).map_err(|_| SensorError::Spi)?;
+        self.mt9m001.set_reset(0).map_err(|_| SensorError::Spi)?;
 
         let read_options_1 = mt9m001::ReadOptions1::DEFAULT.set_snapshot_mode(true);
-        self.mt9m001.set_read_options_1(&read_options_1)?;
+        self.mt9m001
+            .set_read_options_1(&read_options_1)
+            .map_err(|_| SensorError::Spi)?;
 
         let cal_control =
             mt9m001::CalCtrl::DEFAULT.set_manual_override_of_black_level_correction(true);
-        self.mt9m001.set_cal_ctrl(&cal_control)?;
+        self.mt9m001
+            .set_cal_ctrl(&cal_control)
+            .map_err(|_| SensorError::Spi)?;
 
         //let read_options_2 = mt9m001::ReadOptions2::DEFAULT.set_raw_data_output_mode(true);
         //self.mt9m001.set_read_options_2(&read_options_2)?;
 
-        self.mt9m001.set_column_start(0)?;
-        self.mt9m001.set_column_size(Self::WIDTH)?;
-        self.mt9m001.set_row_start(0)?;
-        self.mt9m001.set_row_size(Self::HEIGHT)?;
-        self.mt9m001.set_horizontal_blanking(0)?;
-        self.mt9m001.set_vertical_blanking(0)?;
+        self.mt9m001
+            .set_column_start(0)
+            .map_err(|_| SensorError::Spi)?;
+        self.mt9m001
+            .set_column_size(WIDTH)
+            .map_err(|_| SensorError::Spi)?;
+        self.mt9m001
+            .set_row_start(0)
+            .map_err(|_| SensorError::Spi)?;
+        self.mt9m001
+            .set_row_size(HEIGHT)
+            .map_err(|_| SensorError::Spi)?;
+        self.mt9m001
+            .set_horizontal_blanking(0)
+            .map_err(|_| SensorError::Spi)?;
+        self.mt9m001
+            .set_vertical_blanking(0)
+            .map_err(|_| SensorError::Spi)?;
 
         self.sleep()?;
 
         Ok(())
     }
 
-    pub async fn configure_and_capture<T: AsyncFnMut() -> ()>(
+    pub fn configure_and_capture<T, F: FnOnce() -> T>(
         &mut self,
         gain: f32,
         shutter: (u32, u32),
-        mut transfer_fn: T,
-    ) -> Result<(), i2c::Error> {
+        transfer_fn: F,
+    ) -> Result<T, SensorError> {
         self.wake()?;
 
         // Set gain
@@ -101,27 +127,51 @@ impl<'a> Sensor<'a> {
         } else {
             0x0061 + ((gain - 9f32) / 1.0) as u16
         };
-        self.mt9m001.set_global_gain(gain)?;
+        self.mt9m001
+            .set_global_gain(gain)
+            .map_err(|_| SensorError::Spi)?;
 
         // Set shutter speed
-        let shutter_delay = self.mt9m001.get_shutter_delay()?;
-        let col_size = self.mt9m001.get_column_size()?;
-        let horizontal_blanking = self.mt9m001.get_horizontal_blanking()?;
+        let shutter_delay = self
+            .mt9m001
+            .get_shutter_delay()
+            .map_err(|_| SensorError::Spi)?;
+        let col_size = self
+            .mt9m001
+            .get_column_size()
+            .map_err(|_| SensorError::Spi)?;
+        let horizontal_blanking = self
+            .mt9m001
+            .get_horizontal_blanking()
+            .map_err(|_| SensorError::Spi)?;
         let (numerator, denominator) = shutter;
-        let integration_time_in_clock_periods = (numerator * Self::FREQUENCY) / denominator;
+        let integration_time_in_clock_periods = (numerator * FREQUENCY) / denominator;
         let shutter_width = (integration_time_in_clock_periods + 180 + 4 * shutter_delay as u32)
             / (col_size as u32 + horizontal_blanking as u32 + 226);
-        self.mt9m001.set_shutter_width(shutter_width as u16)?;
+        self.mt9m001
+            .set_shutter_width(shutter_width as u16)
+            .map_err(|_| SensorError::Spi)?;
 
         // Trigger...
-        self.trigger.set_high();
-        self.trigger.set_low();
+        self.trigger
+            .set_high()
+            .map_err(|_| SensorError::TriggerError)?;
+        self.trigger
+            .set_low()
+            .map_err(|_| SensorError::TriggerError)?;
 
         // Capture here...
-        transfer_fn().await;
+        let result = transfer_fn();
 
         self.sleep()?;
 
-        Ok(())
+        Ok(result)
     }
+}
+
+#[derive(Debug)]
+pub enum SensorError {
+    Spi,
+    TriggerError,
+    StandbyError,
 }

@@ -1,59 +1,76 @@
-use embassy_rp::{gpio::Output, peripherals::SPI0, spi};
+use embedded_hal::{digital::OutputPin, spi::SpiBus};
 
-pub struct FM25L16B<'a> {
-    cs: Output<'a>,
-    spi: spi::Spi<'a, SPI0, spi::Blocking>,
+const WRITE_ENABLE: u8 = 0x06;
+const READ_MEMORY: u8 = 0x03;
+const WRITE_MEMORY: u8 = 0x02;
+
+pub struct FM25L16B<CS: OutputPin, SPI: SpiBus> {
+    cs: CS,
+    spi: SPI,
 }
 
-impl<'a> FM25L16B<'a> {
-    const WRITE_ENABLE: u8 = 0x06;
-    const READ_MEMORY: u8 = 0x03;
-    const WRITE_MEMORY: u8 = 0x02;
-
-    pub fn new(mut cs: Output<'a>, spi: spi::Spi<'a, SPI0, spi::Blocking>) -> Self {
-        cs.set_high();
+impl<CS, SPI> FM25L16B<CS, SPI>
+where
+    CS: OutputPin,
+    SPI: SpiBus,
+{
+    pub fn new(cs: CS, spi: SPI) -> Self {
         Self { cs, spi }
     }
 
-    fn with_cs<F, R>(&mut self, f: F) -> Result<R, spi::Error>
+    fn with_cs<F, R>(&mut self, f: F) -> Result<R, FM25L16BError>
     where
-        F: FnOnce(&mut spi::Spi<'a, SPI0, spi::Blocking>) -> Result<R, spi::Error>,
+        F: FnOnce(&mut SPI) -> Result<R, FM25L16BError>,
     {
-        self.cs.set_low();
+        self.cs.set_low().map_err(|_| FM25L16BError::ChipSelect)?;
         let result = f(&mut self.spi);
-        self.cs.set_high();
+        self.cs.set_high().map_err(|_| FM25L16BError::ChipSelect)?;
         result
     }
 
-    pub fn read_bytes(&mut self, address: u16, bytes: &mut [u8]) -> Result<(), spi::Error> {
+    pub fn read_bytes(&mut self, address: u16, bytes: &mut [u8]) -> Result<(), FM25L16BError> {
         let [hi, lo] = address.to_le_bytes();
-        let tx = [Self::READ_MEMORY, hi, lo];
+        let tx = [READ_MEMORY, hi, lo];
 
         self.with_cs(|spi| {
-            spi.blocking_write(&tx)?;
-            spi.blocking_read(bytes)
+            spi.write(&tx).map_err(|_| FM25L16BError::Spi)?;
+            spi.read(bytes).map_err(|_| FM25L16BError::Spi)
         })
     }
 
-    pub fn write_bytes(&mut self, address: u16, bytes: &[u8]) -> Result<(), spi::Error> {
+    pub fn write_bytes(&mut self, address: u16, bytes: &[u8]) -> Result<(), FM25L16BError> {
         let [hi, lo] = address.to_le_bytes();
-        self.with_cs(|spi| spi.blocking_write(&[Self::WRITE_ENABLE]))?;
+        self.with_cs(|spi| spi.write(&[WRITE_ENABLE]).map_err(|_| FM25L16BError::Spi))
+            .map_err(|_| FM25L16BError::Spi)?;
         self.with_cs(|spi| {
-            spi.blocking_write(&[Self::WRITE_MEMORY, hi, lo])?;
-            spi.blocking_write(bytes)
+            spi.write(&[WRITE_MEMORY, hi, lo])
+                .map_err(|_| FM25L16BError::Spi)?;
+            spi.write(bytes).map_err(|_| FM25L16BError::Spi)
         })
     }
 
-    pub fn read<T: NativeByteOrder>(&mut self, address: u16) -> Result<T, spi::Error> {
+    pub fn read<T: NativeByteOrder>(&mut self, address: u16) -> Result<T, FM25L16BError> {
         let mut bytes = T::Bytes::default();
-        self.read_bytes(address, bytes.as_mut())?;
+        self.read_bytes(address, bytes.as_mut())
+            .map_err(|_| FM25L16BError::Spi)?;
         Ok(T::from_ne_bytes(bytes))
     }
 
-    pub fn write<T: NativeByteOrder>(&mut self, address: u16, value: T) -> Result<(), spi::Error> {
-        self.write_bytes(address, value.to_ne_bytes().as_ref())?;
+    pub fn write<T: NativeByteOrder>(
+        &mut self,
+        address: u16,
+        value: T,
+    ) -> Result<(), FM25L16BError> {
+        self.write_bytes(address, value.to_ne_bytes().as_ref())
+            .map_err(|_| FM25L16BError::Spi)?;
         Ok(())
     }
+}
+
+#[derive(Debug)]
+pub enum FM25L16BError {
+    Spi,
+    ChipSelect,
 }
 
 pub trait NativeByteOrder {

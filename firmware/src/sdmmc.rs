@@ -1,28 +1,22 @@
-use embassy_embedded_hal::SetConfig;
-use embassy_rp::{gpio::Output, peripherals::SPI1, spi};
-use embassy_time::Delay;
-use embedded_hal_bus::spi::ExclusiveDevice;
-use embedded_sdmmc::{Error, SdCard, SdCardError};
+use embedded_hal::spi::SpiDevice;
+use embedded_sdmmc::{Error, SdCard, SdCardError, VolumeManager};
+use rp235x_hal::{Timer, timer::CopyableTimer0};
 
-type VolumeManager<'a> = embedded_sdmmc::VolumeManager<
-    SdCard<ExclusiveDevice<spi::Spi<'a, SPI1, spi::Blocking>, Output<'a>, Delay>, Delay>,
-    DummyTimesource,
->;
-
-pub struct Sdmmc<'a> {
-    volume_manager: VolumeManager<'a>,
+pub struct Sdmmc<'a, SPI>
+where
+    SPI: SpiDevice,
+{
+    volume_manager:
+        VolumeManager<SdCard<SPI, &'a mut Timer<CopyableTimer0>>, DummyTimesource, 4, 4, 1>,
 }
 
-impl<'a> Sdmmc<'a> {
-    pub fn new(spi: spi::Spi<'a, SPI1, spi::Blocking>, cs: Output<'a>) -> Self {
-        let spi_device = ExclusiveDevice::new(spi, cs, Delay);
-        let sd_card = SdCard::new(spi_device, Delay);
-        let mut config = spi::Config::default();
-        config.frequency = 24_000_000;
-        sd_card
-            .spi(|dev| SetConfig::set_config(dev.bus_mut(), &config))
-            .ok();
-        let volume_manager = embedded_sdmmc::VolumeManager::new(sd_card, DummyTimesource());
+impl<'a, SPI> Sdmmc<'a, SPI>
+where
+    SPI: SpiDevice,
+{
+    pub fn new(spi: SPI, timer: &'a mut Timer<CopyableTimer0>) -> Self {
+        let sdcard = SdCard::new(spi, timer);
+        let volume_manager = VolumeManager::new(sdcard, DummyTimesource());
         Self { volume_manager }
     }
 
