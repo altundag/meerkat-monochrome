@@ -83,7 +83,7 @@ fn main() -> ! {
     let _sensor_clock = pins.gpio21.into_function::<gpio::FunctionClock>();
     clocks
         .gpio_output0_clock
-        .configure_clock(&clocks.system_clock, 6.MHz())
+        .configure_clock(&clocks.system_clock, sensor::FREQUENCY.Hz())
         .unwrap();
     clocks.gpio_output0_clock.enable();
     let sensor_i2c_sda: gpio::Pin<_, FunctionI2C, _> = pins.gpio2.reconfigure();

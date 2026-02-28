@@ -9,7 +9,7 @@ use mt9m001::MT9M001;
 
 pub const HEIGHT: u16 = 1048;
 pub const WIDTH: u16 = 1312;
-pub const FREQUENCY: u32 = 6_000_000;
+pub const FREQUENCY: u32 = 6_500_000;
 
 pub struct Sensor<I2C: I2c, SP: OutputPin, TP: OutputPin> {
     sensor_clock: GpioOutput0Clock,
