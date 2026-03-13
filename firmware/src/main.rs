@@ -175,17 +175,18 @@ fn main() -> ! {
     let mut sdmmc_memory = sdmmc::Sdmmc::new(sdmmc_spi_bus, &mut timer);
 
     // Capture frame...
-    status_led.set_high().unwrap();
-    for i in 0..5 {
+    for denominator in (50..=500).step_by(50) {
         sm.clear_fifos();
         let running_sm = sm.start();
         let running_transfer = transfer.start();
 
-        let capture_result = sensor.configure_and_capture(1f32, (1, 5 * (i + 1)), || {
+        status_led.set_high().unwrap();
+        let capture_result = sensor.configure_and_capture(1f32, (1, denominator), || {
             let (channel, from, to) = running_transfer.wait();
             let stopped_sm = running_sm.stop();
             (stopped_sm, (channel, from, to))
         });
+        status_led.set_low().unwrap();
 
         (sm, transfer) = if let Ok((returned_sm, (channel, from, to))) = capture_result {
             let image_counter = if let Ok(v) = fram.read(0).and_then(|v: u64| {
