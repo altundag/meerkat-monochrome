@@ -6,10 +6,19 @@ import numpy as np
 
 
 def convert(input: Path, width: int, height: int) -> Image.Image:
-    words = np.fromfile(input, dtype="<u4")
-    shifts = np.array([0, 10, 20], dtype=np.uint32)
-    samples = ((words[:, None] >> shifts) & 0x3FF).astype(np.uint16)
-    samples = samples.ravel()
+    data = np.fromfile(input, dtype=np.uint8)
+
+    # 5 bytes (4 pixels)
+    blocks = data.reshape(-1, 5).astype(np.uint16)
+
+    out = np.empty((blocks.shape[0], 4), dtype=np.uint16)
+
+    out[:, 0] = blocks[:, 0] | ((blocks[:, 1] & 0x03) << 8)
+    out[:, 1] = (blocks[:, 1] >> 2) | ((blocks[:, 2] & 0x0F) << 6)
+    out[:, 2] = (blocks[:, 2] >> 4) | ((blocks[:, 3] & 0x3F) << 4)
+    out[:, 3] = (blocks[:, 3] >> 6) | (blocks[:, 4] << 2)
+
+    samples = out.reshape(-1)
 
     samples = np.flip(
         np.packbits(np.flip(np.unpackbits(samples.view(np.uint8)))).view(np.uint16)

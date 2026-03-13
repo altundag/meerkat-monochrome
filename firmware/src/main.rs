@@ -19,8 +19,8 @@ use rp235x_hal::{
     timer::CopyableTimer0,
 };
 
-const U32_IMAGE_BUFFER_LENGTH: usize =
-    ((sensor::WIDTH as usize + 2) * sensor::HEIGHT as usize).div_ceil(3);
+const NUMBER_OF_PIXELS: usize = (sensor::WIDTH as usize + 2) * sensor::HEIGHT as usize;
+const U32_IMAGE_BUFFER_LENGTH: usize = NUMBER_OF_PIXELS * 10 / 32;
 
 #[unsafe(link_section = ".start_block")]
 #[used]
@@ -132,7 +132,8 @@ fn main() -> ! {
         .in_count(10)
         .clock_divisor_fixed_point(1, 0)
         .buffers(rp235x_hal::pio::Buffers::OnlyRx)
-        .push_threshold(64)
+        .push_threshold(32)
+        .in_shift_direction(rp235x_hal::pio::ShiftDirection::Right)
         .autopush(true)
         .build(sm0);
     sm.set_pindirs([
@@ -175,12 +176,12 @@ fn main() -> ! {
 
     // Capture frame...
     status_led.set_high().unwrap();
-    for i in 0..10 {
+    for i in 0..5 {
         sm.clear_fifos();
         let running_sm = sm.start();
         let running_transfer = transfer.start();
 
-        let capture_result = sensor.configure_and_capture(1f32, (1, 15 * (i + 1)), || {
+        let capture_result = sensor.configure_and_capture(1f32, (1, 5 * (i + 1)), || {
             let (channel, from, to) = running_transfer.wait();
             let stopped_sm = running_sm.stop();
             (stopped_sm, (channel, from, to))

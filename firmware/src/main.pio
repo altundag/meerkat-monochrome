@@ -1,11 +1,31 @@
 .program capture
 
 .wrap_target
-    set x, 2      ; set X to 2 so we will read 3 pixels total (counts 2, 1, 0)
-loop:
     wait 1 gpio 5
-    wait 0 gpio 5 ; wait for GPIO 5 to go low (start of valid data)
-    in pins, 10   ; read 10 bits from the pins (one pixel)
-    jmp x-- loop  ; repeat until we have read 3 pixels
-in null, 2        ; add 2 zero bits so the ISR contains exactly 32 bits
+    wait 0 gpio 5
+    mov osr, pins
+    in osr, 8
+    out null, 8
+    in osr, 2
+
+    wait 1 gpio 5
+    wait 0 gpio 5
+    mov osr, pins
+    in osr, 6
+    out null, 6
+    in osr, 4
+
+    wait 1 gpio 5
+    wait 0 gpio 5
+    mov osr, pins
+    in osr, 4
+    out null, 4
+    in osr, 6
+
+    wait 1 gpio 5
+    wait 0 gpio 5
+    mov osr, pins
+    in osr, 2
+    out null, 2
+    in osr, 8
 .wrap

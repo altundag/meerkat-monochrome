@@ -1,7 +1,7 @@
 # Meerkat Monochrome
 
 Meerkat Monochrome is a monochrome camera project that I started as a hobby. This repository contains the complete design, including PCB layouts, firmware, and supporting tools. The camera hardware consists of:
-- an MT9M001C12STM monochrome image sensor (1312 × 1048)
+- an MT9M001C12STM monochrome image sensor
 - an RP2354A used as the camera's processing and control unit
 - an APS6404L-3SQR QSPI PSRAM for the frame buffer
 - an FM25L16B F-RAM to permanently store data (e.g., the frame count)
