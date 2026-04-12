@@ -5,6 +5,7 @@ mod fram;
 mod psram;
 mod sdmmc;
 mod sensor;
+mod tiff;
 
 use core::panic::PanicInfo;
 use embedded_hal::{delay::DelayNs, digital::OutputPin};
@@ -132,8 +133,9 @@ fn main() -> ! {
         .in_count(10)
         .clock_divisor_fixed_point(1, 0)
         .buffers(rp235x_hal::pio::Buffers::OnlyRx)
-        .push_threshold(32)
+        .push_threshold(0)
         .in_shift_direction(rp235x_hal::pio::ShiftDirection::Right)
+        .out_shift_direction(rp235x_hal::pio::ShiftDirection::Right)
         .autopush(true)
         .build(sm0);
     sm.set_pindirs([
@@ -175,9 +177,10 @@ fn main() -> ! {
     let mut sdmmc_memory = sdmmc::Sdmmc::new(sdmmc_spi_bus, &mut timer);
 
     // Capture frame...
-    for denominator in (50..=500).step_by(50) {
+    for denominator in (50..=51).step_by(50) {
         sm.clear_fifos();
         let running_sm = sm.start();
+        transfer.bswap(false);
         let running_transfer = transfer.start();
 
         status_led.set_high().unwrap();
@@ -201,7 +204,10 @@ fn main() -> ! {
             let image_counter = (image_counter % u16::MAX as u64) as u16;
 
             let (_, image, _) = unsafe { to.align_to_mut::<u8>() };
-            if sdmmc_memory.write_image(image_counter, image).is_err() {
+            if sdmmc_memory
+                .write_image(image_counter, sensor::WIDTH + 2, sensor::HEIGHT, 10, image)
+                .is_err()
+            {
                 blink(&mut timer, &mut status_led, 6);
                 panic!("cannot save image");
             }

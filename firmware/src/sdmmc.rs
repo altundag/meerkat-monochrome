@@ -1,5 +1,6 @@
+use crate::tiff::write_single_directory_monochrome_tiff;
 use embedded_hal::spi::SpiDevice;
-use embedded_sdmmc::{Error, SdCard, SdCardError, VolumeManager};
+use embedded_sdmmc::{Error, Mode::ReadWriteCreate, SdCard, SdCardError, VolumeManager};
 use rp235x_hal::{Timer, timer::CopyableTimer0};
 
 pub struct Sdmmc<'a, SPI>
@@ -20,14 +21,21 @@ where
         Self { volume_manager }
     }
 
-    pub fn write_image(&mut self, image_num: u16, image: &[u8]) -> Result<(), Error<SdCardError>> {
+    pub fn write_image(
+        &mut self,
+        image_num: u16,
+        width: u16,
+        height: u16,
+        bpp: u16,
+        image: &mut [u8],
+    ) -> Result<(), Error<SdCardError>> {
         let volume = self
             .volume_manager
             .open_volume(embedded_sdmmc::VolumeIdx(0))?;
         let root_dir = volume.open_root_dir()?;
 
         // file name
-        let mut buf = *b"IM00000.RAW";
+        let mut buf = *b"IM00000.TIF";
         let mut n = image_num;
         for b in buf[2..7].iter_mut().rev() {
             *b += (n % 10) as u8;
@@ -35,11 +43,15 @@ where
         }
         let file_name = unsafe { str::from_utf8_unchecked(&buf) };
 
-        let file = root_dir
-            .open_file_in_dir(file_name, embedded_sdmmc::Mode::ReadWriteCreateOrTruncate)?;
-        file.write(image)?;
-        file.flush()?;
-        file.close()?;
+        let file = root_dir.open_file_in_dir(file_name, ReadWriteCreate)?;
+
+        write_single_directory_monochrome_tiff(
+            |bytes| file.write(bytes),
+            width,
+            height,
+            bpp,
+            image,
+        )?;
 
         Ok(())
     }

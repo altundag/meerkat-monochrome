@@ -8,7 +8,7 @@ use rp235x_hal::{
 use mt9m001::MT9M001;
 
 pub const HEIGHT: u16 = 1048;
-pub const WIDTH: u16 = 1312;
+pub const WIDTH: u16 = 1310;
 pub const FREQUENCY: u32 = 6_500_000;
 
 pub struct Sensor<I2C: I2c, SP: OutputPin, TP: OutputPin> {
