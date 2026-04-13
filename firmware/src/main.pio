@@ -1,4 +1,4 @@
-.program capture
+.program transfer
 
 .wrap_target
     wait 1 gpio 5
@@ -7,7 +7,6 @@
     out null, 22
     out x, 2
     in osr, 8
-    out null, 8
 
     wait 1 gpio 5
     wait 0 gpio 5
@@ -15,7 +14,6 @@
     out null, 22
     out y, 4
     in osr, 6
-    out null, 6
     in x, 2
 
     wait 1 gpio 5
@@ -24,7 +22,6 @@
     out null, 22
     out x, 6
     in osr, 4
-    out null, 4
     in y, 4
 
     wait 1 gpio 5
@@ -33,7 +30,6 @@
     out null, 22
     out y, 8;
     in osr, 2
-    out null, 2
     in x, 6
     in y, 8
 .wrap
