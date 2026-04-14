@@ -112,7 +112,7 @@ fn main() -> ! {
     // Sensor PIO
     let pio_capture = pio::pio_file!(
         "src/main.pio",
-        select_program("capture"),
+        select_program("transfer"),
         options(max_program_size = 32)
     );
     let (mut pio, sm0, _, _, _) = p.PIO0.split(&mut p.RESETS);
