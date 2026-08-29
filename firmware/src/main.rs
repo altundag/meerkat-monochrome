@@ -177,7 +177,7 @@ fn main() -> ! {
     let mut sdmmc_memory = sdmmc::Sdmmc::new(sdmmc_spi_bus, &mut timer);
 
     // Capture frame...
-    for denominator in (50..=51).step_by(50) {
+    for denominator in (24..=25).step_by(20) {
         sm.clear_fifos();
         let running_sm = sm.start();
         transfer.bswap(false);
