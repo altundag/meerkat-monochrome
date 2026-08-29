@@ -43,15 +43,9 @@ where
         }
         let file_name = unsafe { str::from_utf8_unchecked(&buf) };
 
-        let file = root_dir.open_file_in_dir(file_name, ReadWriteCreate)?;
+        let mut file = root_dir.open_file_in_dir(file_name, ReadWriteCreate)?;
 
-        write_single_directory_monochrome_tiff(
-            |bytes| file.write(bytes),
-            width,
-            height,
-            bpp,
-            image,
-        )?;
+        write_single_directory_monochrome_tiff(&mut file, width, height, bpp, image)?;
 
         Ok(())
     }

@@ -1,3 +1,5 @@
+use embedded_io::Write;
+
 const TAG_NEW_SUBFILE_TYPE: u16 = 254;
 const TAG_IMAGE_WIDTH: u16 = 256;
 const TAG_IMAGE_HEIGHT: u16 = 257;
@@ -32,16 +34,13 @@ const fn long_entry(tag: u16, count: u32, offset: u32) -> [u8; 12] {
     ifd_entry(tag, 4, count, offset)
 }
 
-pub fn write_single_directory_monochrome_tiff<W, E>(
-    mut write_all: W,
+pub fn write_single_directory_monochrome_tiff<W: Write>(
+    writer: &mut W,
     width: u16,
     height: u16,
     bpp: u16,
     image: &[u8],
-) -> Result<(), E>
-where
-    W: FnMut(&[u8]) -> Result<(), E>,
-{
+) -> Result<(), W::Error> {
     const MAKE: &[u8] = b"Meerkat\0";
     const MODEL: &[u8] = b"Monochrome 1\0";
     const SOFTWARE: &[u8] = env!("CARGO_PKG_VERSION").as_bytes();
@@ -53,13 +52,13 @@ where
     let software_offset = model_offset + MODEL.len() as u32;
     let ifd_offset = software_offset + SOFTWARE.len() as u32;
 
-    write_all(&[b'I', b'I', 0x2A, 0x00])?;
-    write_all(&ifd_offset.to_le_bytes())?;
+    writer.write_all(&[b'I', b'I', 0x2A, 0x00])?;
+    writer.write_all(&ifd_offset.to_le_bytes())?;
 
-    write_all(image)?;
-    write_all(MAKE)?;
-    write_all(MODEL)?;
-    write_all(SOFTWARE)?;
+    writer.write_all(image)?;
+    writer.write_all(MAKE)?;
+    writer.write_all(MODEL)?;
+    writer.write_all(SOFTWARE)?;
 
     let entries = [
         short_entry(TAG_NEW_SUBFILE_TYPE, 0),
@@ -79,9 +78,9 @@ where
         short_entry(TAG_SAMPLE_FORMAT, 1),
     ];
 
-    write_all(&(entries.len() as u16).to_le_bytes())?;
+    writer.write_all(&(entries.len() as u16).to_le_bytes())?;
     for entry in entries {
-        write_all(&entry)?;
+        writer.write_all(&entry)?;
     }
-    write_all(&0u32.to_le_bytes())
+    writer.write_all(&0u32.to_le_bytes())
 }
